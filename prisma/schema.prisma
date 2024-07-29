@@ -1,0 +1,476 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+generator markdown {
+  provider = "prisma-markdown"
+  output   = "./ERD.md"
+  title    = "Executive Function App"
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+generator zod {
+  provider         = "zod-prisma-types"
+  output           = "./generated/zod"
+  useMultipleFiles = true
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("PG_URL")
+  extensions = [pgcrypto]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  person   Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId String? @unique @db.Uuid
+
+  accounts Account[]
+  sessions Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Account and Session are auth-related. User is core backend info for a single person. Person is human info. PII is separated.
+
+/// Non-identifying information linked to a single person.
+model Person {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String
+  pronouns String[]
+  bio      String?
+
+  user         User?
+  personalInfo PII?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roleTerms      RoleTerm[]
+  valuesWritten  EthicVersion[]
+  valueRankings  EthicsToPersons[]
+  valueResponses EthicVersionsToPersons[]
+
+  isActive                  Boolean                    @default(true)
+  circleRoles               CirclesToRoles[]
+  volunteerResponses        VolunteerResponse[]        @relation(name: "responder")
+  volunterResponsesImported VolunteerResponse[]        @relation(name: "importer")
+  preferredContactMethod    ContactMethod?
+  onboarding                OnboardingStepsToPersons[]
+  availability              Availability[]
+  volunteerQuestionId       Int
+
+  volunteerQuestionEdits VolunteerQuestionEdits[]
+  roleEdits              RoleEdits[]
+  circleAimEdits         CircleAimEdits[]
+}
+
+/// Personally-identifying information. Authorize access to this information appropriately.
+model PII {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  personId String @unique
+
+  legalFirstName String?
+  legalLastName  String?
+  address        String?
+  phoneNumber    String?
+  discord        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Circle {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  mission     String
+  description String
+  aims        CircleAim[]
+  domains     String[]
+  createdAt   DateTime         @default(now())
+  updatedBy   DateTime
+  isActive    Boolean
+  roles       CirclesToRoles[]
+}
+
+model CircleAim {
+  id       Int              @id @default(autoincrement())
+  circle   Circle?          @relation(fields: [circleId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  circleId Int?
+  text     String
+  edits    CircleAimEdits[]
+
+  isActive Boolean
+}
+
+model CircleAimEdits {
+  id          Int       @id @default(autoincrement())
+  circleAim   CircleAim @relation(fields: [circleAimId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  circleAimId Int
+  editor      Person?   @relation(fields: [editorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  editorId    String?   @db.Uuid
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String
+  description String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  edits       RoleEdits[]
+  isActive    Boolean
+  circles     CirclesToRoles[]
+}
+
+model RoleEdits {
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  roleId   Int
+  editor   Person @relation(fields: [editorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  editorId String @db.Uuid
+
+  updatedAt DateTime @updatedAt
+
+  @@id([roleId, editorId])
+}
+
+model CirclesToRoles {
+  circle   Circle @relation(fields: [circleId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  circleId Int
+  role     Role   @relation(fields: [roleId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  roleId   Int
+
+  incumbent   Person     @relation(fields: [incumbentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  incumbentId String     @db.Uuid
+  terms       RoleTerm[]
+  termIds     Int[]
+
+  @@id([circleId, roleId])
+}
+
+model RoleTerm {
+  id         Int            @id @default(autoincrement())
+  circleRole CirclesToRoles @relation(fields: [circleId, roleId], references: [circleId, roleId], onDelete: Restrict)
+  circleId   Int
+  roleId     Int
+  holder     Person         @relation(fields: [holderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  holderId   String         @db.Uuid
+  start      DateTime       @default(now())
+  end        DateTime?
+}
+
+// Todo: UI that shows diff between active version and others
+/// A value that Moneyless Society collectively holds. Those that we require new members consent to are marked as `coreValue`s. Variations of the text are stored in each EthicVersion. After members propose values, other members will have the opportunity to review them and consent, change their ranking of variations, or provide commentary.
+model Ethic {
+  id        Int               @id @default(autoincrement())
+  shortName String?           @unique
+  versions  EthicVersion[]    @relation(name: "version")
+  activeId  Int               @unique
+  coreValue Boolean           @default(false)
+  responses EthicsToPersons[]
+}
+
+model EthicVersion {
+  id          Int     @id @default(autoincrement())
+  text        String  @unique
+  ethic       Ethic   @relation(name: "version", fields: [ethicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ethicId     Int
+  submitter   Person? @relation(fields: [submitterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  submitterId String? @db.Uuid
+
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  responses EthicVersionsToPersons[]
+}
+
+/// Versions of an ethical value's responses to different versions of a given ethical value are ranked in `versionRanking`.
+model EthicsToPersons {
+  ethic    Ethic  @relation(fields: [ethicId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ethicId  Int
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  personId String @db.Uuid
+
+  ranking Int[]
+
+  updatedAt DateTime @updatedAt
+
+  @@id([ethicId, personId])
+}
+
+/// Commentary and consent by an individual to a version of an ethical value.
+model EthicVersionsToPersons {
+  ethicVersion   EthicVersion @relation(fields: [ethicVersionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ethicVersionId Int
+  person         Person       @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  personId       String       @db.Uuid
+
+  consent    Boolean @default(false)
+  commentary String?
+
+  @@id([ethicVersionId, personId])
+}
+
+model VolunteerQuestion {
+  id        Int                      @id @default(autoincrement())
+  text      String[]
+  responses VolunteerResponse[]
+  updatedAt DateTime                 @updatedAt
+  edits     VolunteerQuestionEdits[]
+}
+
+model VolunteerQuestionEdits {
+  question   VolunteerQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  questionId Int
+  editor     Person            @relation(fields: [editorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  editorId   String            @db.Uuid
+
+  updatedAt DateTime @updatedAt
+
+  @@id([questionId, editorId])
+}
+
+model VolunteerResponse {
+  question    VolunteerQuestion @relation(fields: [questionId], references: [id])
+  questionId  Int
+  responder   Person            @relation(name: "responder", fields: [responderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  responderId String            @db.Uuid
+
+  answer    String
+  updatedAt DateTime @updatedAt
+
+  importedBy  Person?   @relation(name: "importer", fields: [importerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  importerId  String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  submittedAt DateTime?
+
+  @@id([questionId, responderId])
+}
+
+model OnboardingStep {
+  id          Int                        @id @default(autoincrement())
+  name        String
+  description String?
+  volunteers  OnboardingStepsToPersons[]
+}
+
+model OnboardingStepsToPersons {
+  step     OnboardingStep @relation(fields: [stepId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  stepId   Int
+  person   Person         @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  personId String         @db.Uuid
+
+  complete       Boolean @default(false)
+  doesOnboarding Boolean @default(false)
+
+  @@id([stepId, personId])
+}
+
+/// Start and end times represent milliseconds from beginning of week
+model Availability {
+  id        Int       @id @default(autoincrement())
+  person    Person    @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  personId  String    @db.Uuid
+  start     Int
+  end       Int
+  startDate DateTime?
+  endDate   DateTime?
+  status    String?
+}
+
+enum TimeZone {
+  AC
+  AET
+  AFT
+  AK
+  ALM
+  AM
+  AN
+  AQT
+  AR
+  AS
+  AW
+  AZ
+  BN
+  BIO
+  BI
+  BO
+  BR
+  BT
+  CA
+  CC
+  CE
+  CH
+  CI
+  CK
+  CL
+  CO
+  CT
+  CV
+  CW
+  CX
+  DAV
+  DDU
+  EAS
+  EA
+  EC
+  EE
+  EG
+  ET
+  FE
+  FJ
+  FK
+  FN
+  GA
+  GAM
+  GE
+  GF
+  GI
+  GM
+  GS
+  GY
+  HS
+  HK
+  HM
+  HOV
+  IC
+  ID
+  IO
+  IRK
+  IS
+  JS
+  KA
+  KG
+  KO
+  KRA
+  KS
+  LHS
+  LIN
+  MAG
+  MAR
+  MAW
+  MT
+  MH
+  MIS
+  MM
+  MSK
+  MU
+  MV
+  MY
+  NC
+  NF
+  NOV
+  NP
+  NS
+  NU
+  NZ
+  OM
+  OR
+  PE
+  PG
+  PH
+  PK
+  PM
+  PO
+  PW
+  PY
+  RE
+  ROT
+  SAK
+  SAM
+  SA
+  SB
+  SC
+  SG
+  SL
+  SRE
+  SR
+  SS
+  SYO
+  TAH
+  TH
+  TF
+  TJ
+  TK
+  TL
+  TM
+  TO
+  TV
+  UC
+  ULA
+  UTC
+  UY
+  UZ
+  VE
+  VL
+  VOL
+  VO
+  VU
+  WAK
+  WA
+  WE
+  WI
+  WIT
+  WST
+  YAK
+  YE
+  Z
+}
+
+enum ContactMethod {
+  DISCORD
+  EMAIL
+  PHONE_CALL
+  SIGNAL
+  SLACK
+  TEXT
+}

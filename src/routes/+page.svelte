@@ -9,4 +9,8 @@
 	<li>Roster</li>
 	<li>Quick links</li>
 	<li>Interactive diagram of our circles</li>
+	<li>Circles resources like agendas, Drive</li>
+	<li>Homework items</li>
+	<li>Shares and needs</li>
+	<li>Social connection engine</li>
 </ul>
