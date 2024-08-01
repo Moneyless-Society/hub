@@ -1,0 +1,502 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table Account {
+  id String [pk]
+  userId String [not null]
+  type String [not null]
+  provider String [not null]
+  providerAccountId String [not null]
+  refresh_token String
+  access_token String
+  expires_at Int
+  token_type String
+  scope String
+  id_token String
+  session_state String
+  user User [not null]
+
+  indexes {
+    (provider, providerAccountId) [unique]
+  }
+}
+
+Table Session {
+  id String [pk]
+  sessionToken String [unique, not null]
+  expires DateTime [not null]
+  user User [not null]
+  userId String [not null]
+}
+
+Table User {
+  id String [pk]
+  name String
+  email String [unique]
+  emailVerified DateTime
+  image String
+  person Person
+  personId String [unique]
+  accounts Account [not null]
+  sessions Session [not null]
+}
+
+Table VerificationToken {
+  identifier String [not null]
+  token String [unique, not null]
+  expires DateTime [not null]
+
+  indexes {
+    (identifier, token) [unique]
+  }
+}
+
+Table Person {
+  id String [pk]
+  name String [not null]
+  pronouns String[] [not null]
+  bio String
+  user User
+  personalInfo PII
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  roleTerms RoleTerm [not null]
+  valuesWritten EthicVersion [not null]
+  valueRankings EthicsToPersons [not null]
+  valueResponses EthicVersionsToPersons [not null]
+  isActive Boolean [not null, default: true]
+  circleRoles CirclesToRoles [not null]
+  volunteerResponses VolunteerResponse [not null]
+  volunterResponsesImported VolunteerResponse [not null]
+  preferredContactMethod ContactMethod
+  onboarding OnboardingStepsToPersons [not null]
+  availability Availability [not null]
+  volunteerQuestionId Int [not null]
+  volunteerQuestionEdits VolunteerQuestionEdits [not null]
+  roleEdits RoleEdits [not null]
+  circleAimEdits CircleAimEdits [not null]
+
+  Note: 'Non-identifying information linked to a single person.'
+}
+
+Table PII {
+  id String [pk]
+  person Person [not null]
+  personId String [unique, not null]
+  legalFirstName String
+  legalLastName String
+  address String
+  phoneNumber String
+  discord String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  Note: 'Personally-identifying information. Authorize access to this information appropriately.'
+}
+
+Table Circle {
+  id Int [pk, increment]
+  name String [unique, not null]
+  mission String [not null]
+  description String [not null]
+  aims CircleAim [not null]
+  domains String[] [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedBy DateTime [not null]
+  isActive Boolean [not null]
+  roles CirclesToRoles [not null]
+}
+
+Table CircleAim {
+  id Int [pk, increment]
+  circle Circle
+  circleId Int
+  text String [not null]
+  edits CircleAimEdits [not null]
+  isActive Boolean [not null]
+}
+
+Table CircleAimEdits {
+  id Int [pk, increment]
+  circleAim CircleAim [not null]
+  circleAimId Int [not null]
+  editor Person
+  editorId String
+}
+
+Table Role {
+  id Int [pk, increment]
+  name String [not null]
+  description String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  edits RoleEdits [not null]
+  isActive Boolean [not null]
+  circles CirclesToRoles [not null]
+}
+
+Table RoleEdits {
+  role Role [not null]
+  roleId Int [not null]
+  editor Person [not null]
+  editorId String [not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (roleId, editorId) [pk]
+  }
+}
+
+Table CirclesToRoles {
+  circle Circle [not null]
+  circleId Int [not null]
+  role Role [not null]
+  roleId Int [not null]
+  incumbent Person [not null]
+  incumbentId String [not null]
+  terms RoleTerm [not null]
+  termIds Int[] [not null]
+
+  indexes {
+    (circleId, roleId) [pk]
+  }
+}
+
+Table RoleTerm {
+  id Int [pk, increment]
+  circleRole CirclesToRoles [not null]
+  circleId Int [not null]
+  roleId Int [not null]
+  holder Person [not null]
+  holderId String [not null]
+  start DateTime [default: `now()`, not null]
+  end DateTime
+}
+
+Table Ethic {
+  id Int [pk, increment]
+  shortName String [unique]
+  versions EthicVersion [not null]
+  activeId Int [unique, not null]
+  coreValue Boolean [not null, default: false]
+  responses EthicsToPersons [not null]
+
+  Note: 'A value that Moneyless Society collectively holds. Those that we require new members consent to are marked as `coreValue`s. Variations of the text are stored in each EthicVersion. After members propose values, other members will have the opportunity to review them and consent, change their ranking of variations, or provide commentary.'
+}
+
+Table EthicVersion {
+  id Int [pk, increment]
+  text String [unique, not null]
+  ethic Ethic [not null]
+  ethicId Int [not null]
+  submitter Person
+  submitterId String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  responses EthicVersionsToPersons [not null]
+}
+
+Table EthicsToPersons {
+  ethic Ethic [not null]
+  ethicId Int [not null]
+  person Person [not null]
+  personId String [not null]
+  ranking Int[] [not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (ethicId, personId) [pk]
+  }
+
+  Note: 'Versions of an ethical value\'s responses to different versions of a given ethical value are ranked in `versionRanking`.'
+}
+
+Table EthicVersionsToPersons {
+  ethicVersion EthicVersion [not null]
+  ethicVersionId Int [not null]
+  person Person [not null]
+  personId String [not null]
+  consent Boolean [not null, default: false]
+  commentary String
+
+  indexes {
+    (ethicVersionId, personId) [pk]
+  }
+
+  Note: 'Commentary and consent by an individual to a version of an ethical value.'
+}
+
+Table VolunteerQuestion {
+  id Int [pk, increment]
+  text String[] [not null]
+  responses VolunteerResponse [not null]
+  updatedAt DateTime [not null]
+  edits VolunteerQuestionEdits [not null]
+}
+
+Table VolunteerQuestionEdits {
+  question VolunteerQuestion [not null]
+  questionId Int [not null]
+  editor Person [not null]
+  editorId String [not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (questionId, editorId) [pk]
+  }
+}
+
+Table VolunteerResponse {
+  question VolunteerQuestion [not null]
+  questionId Int [not null]
+  responder Person [not null]
+  responderId String [not null]
+  answer String [not null]
+  updatedAt DateTime [not null]
+  importedBy Person
+  importerId String
+  createdAt DateTime [default: `now()`, not null]
+  submittedAt DateTime
+
+  indexes {
+    (questionId, responderId) [pk]
+  }
+}
+
+Table OnboardingStep {
+  id Int [pk, increment]
+  name String [not null]
+  description String
+  volunteers OnboardingStepsToPersons [not null]
+}
+
+Table OnboardingStepsToPersons {
+  step OnboardingStep [not null]
+  stepId Int [not null]
+  person Person [not null]
+  personId String [not null]
+  complete Boolean [not null, default: false]
+  doesOnboarding Boolean [not null, default: false]
+
+  indexes {
+    (stepId, personId) [pk]
+  }
+}
+
+Table Availability {
+  id Int [pk, increment]
+  person Person [not null]
+  personId String [not null]
+  start Int [not null]
+  end Int [not null]
+  startDate DateTime
+  endDate DateTime
+  status String
+
+  Note: 'Start and end times represent milliseconds from beginning of week'
+}
+
+Enum TimeZone {
+  AC
+  AET
+  AFT
+  AK
+  ALM
+  AM
+  AN
+  AQT
+  AR
+  AS
+  AW
+  AZ
+  BN
+  BIO
+  BI
+  BO
+  BR
+  BT
+  CA
+  CC
+  CE
+  CH
+  CI
+  CK
+  CL
+  CO
+  CT
+  CV
+  CW
+  CX
+  DAV
+  DDU
+  EAS
+  EA
+  EC
+  EE
+  EG
+  ET
+  FE
+  FJ
+  FK
+  FN
+  GA
+  GAM
+  GE
+  GF
+  GI
+  GM
+  GS
+  GY
+  HS
+  HK
+  HM
+  HOV
+  IC
+  ID
+  IO
+  IRK
+  IS
+  JS
+  KA
+  KG
+  KO
+  KRA
+  KS
+  LHS
+  LIN
+  MAG
+  MAR
+  MAW
+  MT
+  MH
+  MIS
+  MM
+  MSK
+  MU
+  MV
+  MY
+  NC
+  NF
+  NOV
+  NP
+  NS
+  NU
+  NZ
+  OM
+  OR
+  PE
+  PG
+  PH
+  PK
+  PM
+  PO
+  PW
+  PY
+  RE
+  ROT
+  SAK
+  SAM
+  SA
+  SB
+  SC
+  SG
+  SL
+  SRE
+  SR
+  SS
+  SYO
+  TAH
+  TH
+  TF
+  TJ
+  TK
+  TL
+  TM
+  TO
+  TV
+  UC
+  ULA
+  UTC
+  UY
+  UZ
+  VE
+  VL
+  VOL
+  VO
+  VU
+  WAK
+  WA
+  WE
+  WI
+  WIT
+  WST
+  YAK
+  YE
+  Z
+}
+
+Enum ContactMethod {
+  DISCORD
+  EMAIL
+  PHONE_CALL
+  SIGNAL
+  SLACK
+  TEXT
+}
+
+Ref: Account.userId > User.id [delete: Cascade]
+
+Ref: Session.userId > User.id [delete: Cascade]
+
+Ref: User.personId - Person.id [delete: Set Null]
+
+Ref: PII.personId - Person.id [delete: Cascade]
+
+Ref: CircleAim.circleId > Circle.id [delete: Set Null]
+
+Ref: CircleAimEdits.circleAimId > CircleAim.id [delete: Cascade]
+
+Ref: CircleAimEdits.editorId > Person.id [delete: Set Null]
+
+Ref: RoleEdits.roleId > Role.id [delete: Cascade]
+
+Ref: RoleEdits.editorId > Person.id [delete: Cascade]
+
+Ref: CirclesToRoles.circleId > Circle.id [delete: Restrict]
+
+Ref: CirclesToRoles.roleId > Role.id [delete: Restrict]
+
+Ref: CirclesToRoles.incumbentId > Person.id [delete: Restrict]
+
+Ref: RoleTerm.(circleId, roleId) > CirclesToRoles.(circleId, roleId) [delete: Restrict]
+
+Ref: RoleTerm.holderId > Person.id [delete: Restrict]
+
+Ref: EthicVersion.ethicId > Ethic.id [delete: Cascade]
+
+Ref: EthicVersion.submitterId > Person.id [delete: Set Null]
+
+Ref: EthicsToPersons.ethicId > Ethic.id [delete: Cascade]
+
+Ref: EthicsToPersons.personId > Person.id [delete: Cascade]
+
+Ref: EthicVersionsToPersons.ethicVersionId > EthicVersion.id [delete: Cascade]
+
+Ref: EthicVersionsToPersons.personId > Person.id [delete: Cascade]
+
+Ref: VolunteerQuestionEdits.questionId > VolunteerQuestion.id [delete: Cascade]
+
+Ref: VolunteerQuestionEdits.editorId > Person.id [delete: Cascade]
+
+Ref: VolunteerResponse.questionId > VolunteerQuestion.id
+
+Ref: VolunteerResponse.responderId > Person.id [delete: Cascade]
+
+Ref: VolunteerResponse.importerId > Person.id [delete: Cascade]
+
+Ref: OnboardingStepsToPersons.stepId > OnboardingStep.id [delete: Cascade]
+
+Ref: OnboardingStepsToPersons.personId > Person.id [delete: Cascade]
+
+Ref: Availability.personId > Person.id [delete: Cascade]
