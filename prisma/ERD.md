@@ -41,7 +41,7 @@ erDiagram
 }
 "Person" {
   String id PK
-  String name
+  String name "nullable"
   String pronouns
   String bio "nullable"
   DateTime createdAt
