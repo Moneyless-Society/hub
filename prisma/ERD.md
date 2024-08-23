@@ -67,6 +67,7 @@ erDiagram
   String mission
   String description
   String domains
+  String slackChannel "nullable"
   DateTime createdAt
   DateTime updatedBy
   Boolean isActive
@@ -281,6 +282,7 @@ Personally-identifying information. Authorize access to this information appropr
   - `mission`: 
   - `description`: 
   - `domains`: 
+  - `slackChannel`: 
   - `createdAt`: 
   - `updatedBy`: 
   - `isActive`: 
