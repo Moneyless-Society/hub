@@ -85,7 +85,7 @@ model VerificationToken {
 /// Non-identifying information linked to a single person.
 model Person {
   id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name     String
+  name     String?
   pronouns String[]
   bio      String?
 
@@ -132,16 +132,18 @@ model PII {
 }
 
 model Circle {
-  id          Int              @id @default(autoincrement())
-  name        String           @unique
-  mission     String
-  description String
-  aims        CircleAim[]
-  domains     String[]
-  createdAt   DateTime         @default(now())
-  updatedBy   DateTime
-  isActive    Boolean
-  roles       CirclesToRoles[]
+  id           Int         @id @default(autoincrement())
+  name         String      @unique
+  mission      String
+  description  String
+  aims         CircleAim[]
+  domains      String[]
+  slackChannel String?
+
+  createdAt DateTime         @default(now())
+  updatedBy DateTime
+  isActive  Boolean
+  roles     CirclesToRoles[]
 }
 
 model CircleAim {

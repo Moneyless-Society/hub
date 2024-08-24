@@ -54,7 +54,7 @@ Table VerificationToken {
 
 Table Person {
   id String [pk]
-  name String [not null]
+  name String
   pronouns String[] [not null]
   bio String
   user User
@@ -102,6 +102,7 @@ Table Circle {
   description String [not null]
   aims CircleAim [not null]
   domains String[] [not null]
+  slackChannel String
   createdAt DateTime [default: `now()`, not null]
   updatedBy DateTime [not null]
   isActive Boolean [not null]

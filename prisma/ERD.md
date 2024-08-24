@@ -41,7 +41,7 @@ erDiagram
 }
 "Person" {
   String id PK
-  String name
+  String name "nullable"
   String pronouns
   String bio "nullable"
   DateTime createdAt
@@ -67,6 +67,7 @@ erDiagram
   String mission
   String description
   String domains
+  String slackChannel "nullable"
   DateTime createdAt
   DateTime updatedBy
   Boolean isActive
@@ -281,6 +282,7 @@ Personally-identifying information. Authorize access to this information appropr
   - `mission`: 
   - `description`: 
   - `domains`: 
+  - `slackChannel`: 
   - `createdAt`: 
   - `updatedBy`: 
   - `isActive`: 
